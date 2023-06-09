@@ -8,7 +8,7 @@ const [url, sekolahID = "69857937", type = "prestasi-rapor"] =
   process.argv.slice(2);
 
 function main() {
-  schedule.scheduleJob('59 8,13,19,23 * * *', function() {
+  schedule.scheduleJob("0 */4 * * *", function () {
     scrapePendaftar({ url, sekolahID, type });
   });
 }
