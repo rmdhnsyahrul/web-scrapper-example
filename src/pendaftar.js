@@ -6,12 +6,13 @@ function delay(time) {
     return new Promise(function(resolve) { 
         setTimeout(resolve, time)
     });
- }
+}
 
-
-export async function scrapePendaftar ({url,
+export async function scrapePendaftar ({
+    url,
     sekolahID,
-    type}) {
+    type
+}) {
 
     if (!url) {
         throw new Error("Please provide URL as a first argument");
@@ -43,6 +44,7 @@ export async function scrapePendaftar ({url,
         
         console.log('> Creating new sheet..')
         const sheet = await doc.addSheet({title: title, headerValues: [
+            'No',
             'Nomor Pendaftaran',
             'Nama Pendaftar',
             'Pilihan 1',
@@ -70,22 +72,22 @@ export async function scrapePendaftar ({url,
     
             return response.url().includes(`/registrant?page=${currPage}`) && response.status() === 200;
         });
+
+        let result = [];
     
         for(let i = currPage; i <= pageCount; i++) {
     
             await delay(2000);
             console.log('> Scrapping table data...\n');
 
-            const result = await page.$$eval('tbody tr', rows => {
+            const dataSource = await page.$$eval('tbody tr', rows => {
                 return Array.from(rows, row => {
                   const columns = row.querySelectorAll('td');
                   return Array.from(columns, column => column.innerText);
                 });
-              });
+            });
 
-            console.log(`> Writing "${result.length}" data into spreadsheet...`)
-            await sheet.addRows(result)
-            console.log('> Done!\n')
+            result = [...result, ...dataSource]
 
             dataCount += result.length;
     
@@ -93,8 +95,7 @@ export async function scrapePendaftar ({url,
             
             await page.screenshot({path: `screenshots/${title}-page-${currPage}.jpeg`, fullPage: true, type: 'jpeg', quality: 80});
             console.log('> Done!\n')
-    
-            // 
+            
             const element = await page.$('li.c-page-link:not(.disabled) > .c-page-link-next')
     
             if(element) {
@@ -103,6 +104,19 @@ export async function scrapePendaftar ({url,
                 await element.click();
             }
         }
+
+        console.log(`> Sorting result data...`)
+        result.sort((a, b) => parseFloat(b[5]) - parseFloat(a[5]))
+        console.log('> Done!\n')
+
+        console.log(`> Writing "${result.length}" data into spreadsheet...`)
+        await sheet.addRows(result);
+        console.log('> Done!\n')
+
+        const hasil = result.findIndex(a => a[2] === "ZHIZIAN SHABBYANNA MALTIM");
+        console.log(`> Hasil Seleksi(SEMENTARA) ${hasil + 1 <= 28 ? "Lulus" : "Tidak"} dengan nomor urut ${hasil + 1}`);
+        console.log('> Done!\n')
+
     } catch(err) {
         throw new Error(err);
     } finally {
