@@ -102,7 +102,7 @@ export async function scrapePendaftar({ url, sekolahID, type }) {
       console.log(">Taking screenshot..", currPage);
 
       await page.screenshot({
-        path: `public/screenshots/${title}-page-${currPage}.jpeg`,
+        path: `screenshots/${title}-page-${currPage}.jpeg`,
         fullPage: true,
         type: "jpeg",
         quality: 80,
