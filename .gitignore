@@ -1,0 +1,9 @@
+# NODE
+node_modules/
+.DS_Store
+
+# screenshots
+screenshots/
+
+# our .gitignore file consist:-
+*secret*.*
