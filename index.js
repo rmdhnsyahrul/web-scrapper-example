@@ -11,7 +11,7 @@ const [
 ] = process.argv.slice(2)
 
 function main () {
-    schedule.scheduleJob('59 59 8,13,19,23 * *', function() {
+    schedule.scheduleJob('59 8,13,19,23 * * *', function() {
         scrapePendaftar({url, sekolahID, type})
     });
 }
