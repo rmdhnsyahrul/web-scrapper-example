@@ -13,13 +13,19 @@ export async function uploadImage(filename) {
         throw new Error(` File "${finalPath}" not found!`);
     }
 
-    const folder = await googleDriveService.searchFolder(folderName).catch((err) => {throw new Error(err)})
-    
-    await googleDriveService.saveFile(filename, finalPath, 'image/jpg', folder.id).catch(err => {throw new Error(err)})
-    
-    console.info(`File ${finalPath} uploaded successfully!\n`);
+    try {
+        const folder = await googleDriveService.searchFolder(folderName).catch((err) => {throw new Error(err)})
 
-    // Delete the file on the server
-    fs.unlinkSync(finalPath);
+        if(folder) {
+            await googleDriveService.saveFile(filename, finalPath, 'image/jpg', folder.id)
+        }
+        
+        console.info(`> File ${finalPath} uploaded successfully!\n`);
 
+    } catch(e) {
+        console.error(e)
+    } finally {
+        // Delete the file on the server
+        fs.unlinkSync(finalPath);
+    }
 }

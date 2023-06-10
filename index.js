@@ -4,12 +4,6 @@ import { creds } from "./config/cred-secret.js";
 import { uploadImage } from "./utils/upload.js";
 import { delay } from "./utils/helper.js";
 
-const [
-  url,
-  sekolahID = "69857937",
-  type = "prestasi-rapor"
-] = process.argv.slice(2);
-
 const STUDENT_NAME = "ZHIZIAN SHABBYANNA MALTIM";
 
 const HEADER_VALUES = [
@@ -109,7 +103,7 @@ export async function run({
 
       dataCount += result.length;
 
-      console.log(`>Taking screenshot.. "screenshots/${title}-page-${currPage}.jpeg"`);
+      console.log(`> Taking screenshot.. "screenshots/${title}-page-${currPage}.jpeg"`);
 
       await page.screenshot({
         path: `screenshots/${title}-page-${currPage}.jpeg`,
