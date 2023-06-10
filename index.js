@@ -1,63 +1,177 @@
-const express = require("express");
-const app = express();
-const port = process.env.PORT || 3001;
+import { GoogleSpreadsheet } from "google-spreadsheet";
+import puppeteer from "puppeteer";
+import { creds } from "./config/cred-secret.js";
+import { uploadImage } from "./utils/upload.js";
+import { delay } from "./utils/helper.js";
 
-app.get("/", (req, res) => res.type("html").send(html));
+const [
+  url,
+  sekolahID = "69857937",
+  type = "prestasi-rapor"
+] = process.argv.slice(2);
 
-const server = app.listen(port, () =>
-  console.log(`Example app listening on port ${port}!`)
-);
+const STUDENT_NAME = "ZHIZIAN SHABBYANNA MALTIM";
 
-server.keepAliveTimeout = 120 * 1000;
-server.headersTimeout = 120 * 1000;
+const HEADER_VALUES = [
+  "No",
+  "Nomor Pendaftaran",
+  "Nama Pendaftar",
+  "Pilihan 1",
+  "Pilihan 2",
+  "Skor",
+]
 
-const html = `
-<!DOCTYPE html>
-<html>
-  <head>
-    <title>Hello from Render!</title>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
-    <script>
-      setTimeout(() => {
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 },
-          disableForReducedMotion: true
+export async function run({
+  url,
+  sekolahID = "69857937",
+  type = "prestasi-rapor"
+}) {
+  if (!url) {
+    throw new Error("Please provide URL as a first argument");
+  }
+
+  const BASE_URL = encodeURI(`${url}/${sekolahID}`);
+  const startTimer = new Date();
+
+  const title = `${startTimer
+    .toJSON()
+    .slice(
+      0,
+      10
+    )}_${startTimer.getHours()}-${startTimer.getMinutes()}-${startTimer.getSeconds()}`;
+
+  let currPage = 1;
+  let pageCount = 0;
+  let dataCount = 0;
+
+  const browser = await puppeteer.launch({
+    headless: "new",
+    ignoreHTTPSErrors: true,
+    defaultViewport: null,
+  });
+
+  const page = await browser.newPage();
+
+  try {
+    console.log("> Connecting to google spreadsheet..");
+    const doc = new GoogleSpreadsheet(creds.spreadsheet_id);
+    await doc.useServiceAccountAuth(creds);
+    await doc.loadInfo();
+    console.log("> Done!\n");
+
+    console.log("> Creating new sheet..");
+    const sheet = await doc.addSheet({
+      title,
+      headerValues: HEADER_VALUES
+    });
+    console.log("> Done!\n");
+
+    console.log(`> Opening url... ${BASE_URL}\n`);
+
+    await page.goto(BASE_URL, {
+      waitUntil: ["domcontentloaded", "networkidle0", "networkidle2"],
+    });
+
+    // Set screen size
+    await page.setViewport({ width: 1920, height: 1300 });
+
+    // Select options
+    const node = await page.waitForSelector("select#type", {
+      timeout: 1000,
+      visible: true,
+    });
+    node.select(type);
+
+    await page.waitForResponse(async (response) => {
+      const httpResponse = await response.json();
+      pageCount = httpResponse.result.paginator.pageCount;
+
+      return (
+        response.url().includes(`/registrant?page=${currPage}`) &&
+        response.status() === 200
+      );
+    });
+
+    let result = [];
+
+    for (let i = currPage; i <= pageCount; i++) {
+      await delay(2000);
+      console.log("> Scrapping table data...\n");
+
+      const dataSource = await page.$$eval("tbody tr", (rows) => {
+        return Array.from(rows, (row) => {
+          const columns = row.querySelectorAll("td");
+          return Array.from(columns, (column) => column.innerText);
         });
-      }, 500);
-    </script>
-    <style>
-      @import url("https://p.typekit.net/p.css?s=1&k=vnd5zic&ht=tk&f=39475.39476.39477.39478.39479.39480.39481.39482&a=18673890&app=typekit&e=css");
-      @font-face {
-        font-family: "neo-sans";
-        src: url("https://use.typekit.net/af/00ac0a/00000000000000003b9b2033/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3") format("woff2"), url("https://use.typekit.net/af/00ac0a/00000000000000003b9b2033/27/d?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3") format("woff"), url("https://use.typekit.net/af/00ac0a/00000000000000003b9b2033/27/a?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3") format("opentype");
-        font-style: normal;
-        font-weight: 700;
+      });
+
+      result = [...result, ...dataSource];
+
+      dataCount += result.length;
+
+      console.log(`>Taking screenshot.. "screenshots/${title}-page-${currPage}.jpeg"`);
+
+      await page.screenshot({
+        path: `screenshots/${title}-page-${currPage}.jpeg`,
+        fullPage: true,
+        type: "jpeg",
+        quality: 80,
+      });
+
+      // UPLOAD file to GDRIVE
+      await uploadImage(`${title}-page-${currPage}.jpeg`)
+      console.log("> Done!\n");
+
+      const element = await page.$(
+        "li.c-page-link:not(.disabled) > .c-page-link-next"
+      );
+
+      if (element) {
+        currPage++;
+        console.log(
+          `> Table pagination trigger, paginate to "${currPage}" data into spreadsheet...\n`
+        );
+        await element.click();
       }
-      html {
-        font-family: neo-sans;
-        font-weight: 700;
-        font-size: calc(62rem / 16);
-      }
-      body {
-        background: white;
-      }
-      section {
-        border-radius: 1em;
-        padding: 1em;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        margin-right: -50%;
-        transform: translate(-50%, -50%);
-      }
-    </style>
-  </head>
-  <body>
-    <section>
-      Hello from Render!
-    </section>
-  </body>
-</html>
-`;
+    }
+
+    console.log(`> Sorting result data...`);
+    result.sort((a, b) => parseFloat(b[5]) - parseFloat(a[5]));
+    console.log("> Done!\n");
+
+    console.log(`> Writing "${result.length}" data into spreadsheet...`);
+    await sheet.addRows(result);
+    console.log("> Done!\n");
+
+    console.log(
+      "====================== COLLECTING RESULT ===================================="
+    );
+    console.log(
+      `Automatically generated at ${new Date()
+        .toJSON()
+        .slice(0, 19)} by: rmdhn.syahrul@gmail.com\n`
+    );
+    const noUrut = result.findIndex((a) => a[2] === STUDENT_NAME);
+    console.log(
+      `> Hasil Seleksi(SEMENTARA)`)
+    console.log(
+      `> NAMA SISWA = ${STUDENT_NAME}`)
+    console.log(`Berada di urutan ke-${noUrut + 1} dari ${result.length} siswa\n`
+    );
+  } catch (err) {
+    throw new Error(err);
+  } finally {
+    console.log(
+      "=============================================================================\n"
+    );
+    console.log(`END> Stopped in page: ${currPage}.`);
+    console.log(`END> Done writing ${dataCount} data into spreadsheet!`);
+    console.log(
+      `END> Program exited with ${(new Date() - startTimer) / 1000} sec...`
+    );
+    console.log(
+      "================================ END OF FILE ================================\n"
+    );
+    browser.close();
+  }
+};
