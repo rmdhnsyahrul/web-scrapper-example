@@ -141,9 +141,7 @@ export async function run({
       "====================== COLLECTING RESULT ===================================="
     );
     console.log(
-      `Automatically generated at ${new Date()
-        .toJSON()
-        .slice(0, 19)} by: rmdhn.syahrul@gmail.com\n`
+      `Automatically generated at ${(new Date()).toString()} by: rmdhn.syahrul@gmail.com\n`
     );
     const noUrut = result.findIndex((a) => a[2] === STUDENT_NAME);
     console.log(
