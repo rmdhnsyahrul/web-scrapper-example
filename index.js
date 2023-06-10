@@ -1,19 +1,9 @@
-import { GoogleSpreadsheet } from "google-spreadsheet";
 import puppeteer from "puppeteer";
-import { creds } from "./config/cred-secret.js";
 import { uploadImage } from "./utils/upload.js";
 import { delay } from "./utils/helper.js";
+import { GoogleSpreadsheetService } from "./services/google-spreadsheet-service.js";
 
 const STUDENT_NAME = "ZHIZIAN SHABBYANNA MALTIM";
-
-const HEADER_VALUES = [
-  "No",
-  "Nomor Pendaftaran",
-  "Nama Pendaftar",
-  "Pilihan 1",
-  "Pilihan 2",
-  "Skor",
-]
 
 export async function run({
   url,
@@ -47,18 +37,7 @@ export async function run({
   const page = await browser.newPage();
 
   try {
-    console.log("> Connecting to google spreadsheet..");
-    const doc = new GoogleSpreadsheet(creds.spreadsheet_id);
-    await doc.useServiceAccountAuth(creds);
-    await doc.loadInfo();
-    console.log("> Done!\n");
-
-    console.log("> Creating new sheet..");
-    const sheet = await doc.addSheet({
-      title,
-      headerValues: HEADER_VALUES
-    });
-    console.log("> Done!\n");
+    const spreadSheetService = new GoogleSpreadsheetService();
 
     console.log(`> Opening url... ${BASE_URL}\n`);
 
@@ -90,7 +69,7 @@ export async function run({
 
     for (let i = currPage; i <= pageCount; i++) {
       await delay(2000);
-      console.log("> Scrapping table data...\n");
+      console.log("> Scrapping table data..");
 
       const dataSource = await page.$$eval("tbody tr", (rows) => {
         return Array.from(rows, (row) => {
@@ -101,18 +80,18 @@ export async function run({
 
       result = [...result, ...dataSource];
 
-      dataCount += result.length;
+      dataCount += dataSource.length;
 
-      console.log(`> Taking screenshot.. "screenshots/${title}-page-${currPage}.jpeg"`);
-
+      console.log(`> Taking screenshot.. "${title}-page-${currPage}.jpeg"`);
       await page.screenshot({
         path: `screenshots/${title}-page-${currPage}.jpeg`,
         fullPage: true,
         type: "jpeg",
         quality: 80,
       });
+      console.log(`> Done!\n`)
 
-      // UPLOAD file to GDRIVE
+      console.log(`> Uploading "${title}-page-${currPage}.jpeg" into google drive..`)
       await uploadImage(`${title}-page-${currPage}.jpeg`)
       console.log("> Done!\n");
 
@@ -123,7 +102,7 @@ export async function run({
       if (element) {
         currPage++;
         console.log(
-          `> Table pagination trigger, paginate to "${currPage}" data into spreadsheet...\n`
+          `> Table pagination trigger, redirecting to page "${currPage}"..\n`
         );
         await element.click();
       }
@@ -134,7 +113,7 @@ export async function run({
     console.log("> Done!\n");
 
     console.log(`> Writing "${result.length}" data into spreadsheet...`);
-    await sheet.addRows(result);
+    await spreadSheetService.createWorksheet(title, result);
     console.log("> Done!\n");
 
     console.log(
