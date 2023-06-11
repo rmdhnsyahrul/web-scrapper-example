@@ -4,7 +4,7 @@
   "description": "web scraping for monitoring PPDB 2023",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js https://ppdb.jabarprov.go.id/wilayah_ppdb/cadisdik/KOTA%20BOGOR/info-pendaftar >> access.log",
+    "start": "node scrapper.js 20258460 1nRD56fM5FKyG98d_FY3lf_y_sUJGN1rrhVGc8hjkdCs PPDB_DEPOK-SMA_15 >> access.log 2>&1 &",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

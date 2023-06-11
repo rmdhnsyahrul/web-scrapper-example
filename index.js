@@ -4,18 +4,26 @@ import { delay } from "./utils/helper.js";
 import { GoogleSpreadsheetService } from "./services/google-spreadsheet-service.js";
 
 const STUDENT_NAME = "ZHIZIAN SHABBYANNA MALTIM";
+const _URL = "https://ppdb.disdik.jabarprov.go.id/wilayah_ppdb/cadisdik/KOTA%20BOGOR/info-pendaftar";
+const startTimer = new Date();
 
 export async function run({
-  url,
-  sekolahID = "69857937",
+  sekolahID,
+  spreadsheetID,
+  driveFolderName,
   type = "prestasi-rapor"
 }) {
-  if (!url) {
-    throw new Error("Please provide URL as a first argument");
+  if (!sekolahID) {
+    throw new Error("Please provide sekolahID as a first argument");
+  } else if(!spreadsheetID) {
+    throw new Error("Please provide spreadsheetID as a second argument");
+  } else if(!driveFolderName) {
+    throw new Error("Please provide driveFolderName as a third argument");
   }
 
-  const BASE_URL = encodeURI(`${url}/${sekolahID}`);
-  const startTimer = new Date();
+  const spreadSheetService = new GoogleSpreadsheetService(spreadsheetID);
+
+  const BASE_URL = encodeURI(`${_URL}/${sekolahID}`);
 
   const title = `${startTimer
     .toJSON()
@@ -37,8 +45,7 @@ export async function run({
   const page = await browser.newPage();
 
   try {
-    const spreadSheetService = new GoogleSpreadsheetService();
-
+    console.log(`> Folder Name "${driveFolderName}"`)
     console.log(`> Opening url... ${BASE_URL}\n`);
 
     await page.goto(BASE_URL, {
@@ -48,9 +55,13 @@ export async function run({
     // Set screen size
     await page.setViewport({ width: 1920, height: 1300 });
 
+    const pageTitle = await page.$eval('.container .row h3', (node) => {
+      return node.textContent;
+    });
+
     // Select options
     const node = await page.waitForSelector("select#type", {
-      timeout: 1000,
+      timeout: 3000,
       visible: true,
     });
     node.select(type);
@@ -92,7 +103,7 @@ export async function run({
       console.log(`> Done!\n`)
 
       console.log(`> Uploading "${title}-page-${currPage}.jpeg" into google drive..`)
-      await uploadImage(`${title}-page-${currPage}.jpeg`)
+      await uploadImage(driveFolderName, `${title}-page-${currPage}.jpeg`)
       console.log("> Done!\n");
 
       const element = await page.$(
@@ -117,17 +128,12 @@ export async function run({
     console.log("> Done!\n");
 
     console.log(
-      "====================== COLLECTING RESULT ===================================="
+      "================================== SUMMARY ==================================\n"
     );
-    console.log(
-      `Automatically generated at ${(new Date()).toString()} by: rmdhn.syahrul@gmail.com\n`
-    );
+    console.log(`${pageTitle}\n`)
     const noUrut = result.findIndex((a) => a[2] === STUDENT_NAME);
-    console.log(
-      `> Hasil Seleksi(SEMENTARA)`)
-    console.log(
-      `> NAMA SISWA = ${STUDENT_NAME}`)
-    console.log(`Berada di urutan ke-${noUrut + 1} dari ${result.length} siswa\n`
+    console.log(`> Hasil Seleksi(SEMENTARA)`)
+    console.log(`> ${STUDENT_NAME} Berada di urutan ke-${noUrut + 1} dari ${result.length} siswa\n`
     );
   } catch (err) {
     throw new Error(err);
@@ -135,10 +141,18 @@ export async function run({
     console.log(
       "=============================================================================\n"
     );
-    console.log(`END> Stopped in page: ${currPage}.`);
-    console.log(`END> Done writing ${dataCount} data into spreadsheet!`);
+    console.log(`END> Done writing data into spreadsheet!`);
+    console.log(`END> TOTAL: ${dataCount}`);
+    console.log(`END> START PAGE: 1`);
+    console.log(`END> END PAGE: ${currPage}`);
     console.log(
-      `END> Program exited with ${(new Date() - startTimer) / 1000} sec...`
+      `END> Program exited with ${(new Date() - startTimer) / 1000} sec...\n`
+    );
+    console.log(
+      `Automatically generated at ${startTimer.toString()}`
+    );
+    console.log(
+      `Author: rmdhn.syahrul@gmail.com\n`
     );
     console.log(
       "================================ END OF FILE ================================\n"

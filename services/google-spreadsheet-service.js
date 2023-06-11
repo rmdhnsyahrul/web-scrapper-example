@@ -4,13 +4,14 @@ import { creds } from "../config/cred-secret.js";
 export class GoogleSpreadsheetService {
     spreadSheetService;
 
-    constructor() {
-        this.spreadSheetService = this.createService();
+    constructor(sheetID) {
+        this.spreadSheetService = this.createService(sheetID);
     }
 
-    createService() {
+    createService(sheetID) {
         try {
-            return new GoogleSpreadsheet(creds.spreadsheet_id);
+            console.log(`> SHEET ID "${sheetID}"`)
+            return new GoogleSpreadsheet(sheetID);
         } catch(e) {
             console.error(e)
         }
@@ -18,11 +19,11 @@ export class GoogleSpreadsheetService {
 
     async createWorksheet(title, spreadsheet) {
         try {
-            console.log(`> Connecting to google spreadsheet.. @${startTime.toString()}`);
+            console.log(`> Connecting to google spreadsheet..`);
             await this.spreadSheetService.useServiceAccountAuth(creds);
             await this.spreadSheetService.loadInfo();
 
-            console.log("> Creating new sheet..");
+            console.log(`> Creating new sheet..`);
             const sheet = await this.spreadSheetService.addSheet({
                 title,
                 headerValues: [
