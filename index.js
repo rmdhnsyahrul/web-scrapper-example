@@ -5,7 +5,6 @@ import { GoogleSpreadsheetService } from "./services/google-spreadsheet-service.
 
 const STUDENT_NAME = "ZHIZIAN SHABBYANNA MALTIM";
 const _URL = "https://ppdb.disdik.jabarprov.go.id/wilayah_ppdb/cadisdik/KOTA%20BOGOR/info-pendaftar";
-const startTimer = new Date();
 
 export async function run({
   sekolahID,
@@ -20,6 +19,8 @@ export async function run({
   } else if(!driveFolderName) {
     throw new Error("Please provide driveFolderName as a third argument");
   }
+  
+  const startTimer = new Date();
 
   const spreadSheetService = new GoogleSpreadsheetService(spreadsheetID);
 
